@@ -78,3 +78,25 @@ let deleteProduct (store: ProductStore) : HttpHandler =
         | true, id ->
             store.Remove id |> ignore
             Response.withStatusCode 204 >> Response.ofEmpty <| ctx
+
+let quote (store: ProductStore) : HttpHandler =
+    fun ctx ->
+        let route = Request.getRoute ctx
+        let id = Guid.Parse(route.GetString "id")
+        let qty = int (route.GetString "qty")
+
+        match store.TryFind id with
+        | Some product ->
+            let total = Pricing.discountedTotalCents product.UnitPriceCents qty
+            let savings = (product.UnitPriceCents * qty) - total
+
+            Response.ofJson
+                {|
+                    sku = product.Sku
+                    quantity = qty
+                    totalCents = total
+                    savingsCents = savings
+                    savingsPercent = savings * 100 / (product.UnitPriceCents * qty)
+                |}
+                ctx
+        | None -> problem 404 "Not found" $"No product with id {id}." ctx

@@ -50,3 +50,18 @@ module Validation =
     let inventoryValueCents (products: Product list) =
         products
         |> List.sumBy (fun p -> int64 p.UnitPriceCents * int64 p.QuantityOnHand)
+
+module Pricing =
+    let discountedTotalCents (unitPriceCents: int) (quantity: int) =
+        if quantity > 100 then unitPriceCents * quantity * 80 / 100
+        elif quantity > 50 then unitPriceCents * quantity * 90 / 100
+        elif quantity > 10 then unitPriceCents * quantity * 95 / 100
+        else unitPriceCents * quantity
+
+    let validateQuote (candidate: NewProduct) =
+        if String.IsNullOrWhiteSpace candidate.Sku then
+            failwith "sku is required"
+        elif candidate.UnitPriceCents <= 0 then
+            failwith "unitPriceCents must be greater than zero"
+        else
+            candidate
