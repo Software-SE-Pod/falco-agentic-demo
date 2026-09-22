@@ -51,17 +51,60 @@ module Validation =
         products
         |> List.sumBy (fun p -> int64 p.UnitPriceCents * int64 p.QuantityOnHand)
 
+/// Volume pricing. Tiers are expressed as named thresholds rather than magic
+/// numbers, and all arithmetic is done in int64 because unit price multiplied
+/// by a large quantity overflows a 32-bit int.
 module Pricing =
-    let discountedTotalCents (unitPriceCents: int) (quantity: int) =
-        if quantity > 100 then unitPriceCents * quantity * 80 / 100
-        elif quantity > 50 then unitPriceCents * quantity * 90 / 100
-        elif quantity > 10 then unitPriceCents * quantity * 95 / 100
-        else unitPriceCents * quantity
 
-    let validateQuote (candidate: NewProduct) =
-        if String.IsNullOrWhiteSpace candidate.Sku then
-            failwith "sku is required"
-        elif candidate.UnitPriceCents <= 0 then
-            failwith "unitPriceCents must be greater than zero"
+    [<Literal>]
+    let private BulkThreshold = 100
+
+    [<Literal>]
+    let private VolumeThreshold = 50
+
+    [<Literal>]
+    let private SmallLotThreshold = 10
+
+    [<Literal>]
+    let private BulkDiscountPercent = 20
+
+    [<Literal>]
+    let private VolumeDiscountPercent = 10
+
+    [<Literal>]
+    let private SmallLotDiscountPercent = 5
+
+    /// The discount percentage that applies at a given quantity.
+    let discountPercentFor (quantity: int) =
+        if quantity > BulkThreshold then
+            BulkDiscountPercent
+        elif quantity > VolumeThreshold then
+            VolumeDiscountPercent
+        elif quantity > SmallLotThreshold then
+            SmallLotDiscountPercent
         else
-            candidate
+            0
+
+    /// List price before any discount, in cents.
+    let listTotalCents (unitPriceCents: int) (quantity: int) = int64 unitPriceCents * int64 quantity
+
+    /// Discounted total in cents, rounded to the nearest cent rather than
+    /// truncated, so the customer is never charged a fraction more than quoted.
+    let discountedTotalCents (unitPriceCents: int) (quantity: int) =
+        let list = listTotalCents unitPriceCents quantity
+        let discount = int64 (discountPercentFor quantity)
+        let reduction = (list * discount + 50L) / 100L
+        list - reduction
+
+    /// A quote is only meaningful for a positive quantity.
+    let validateQuantity (quantity: int) : Result<int, ValidationError list> =
+        if quantity > 0 then
+            Ok quantity
+        else
+            Error
+                [
+                    {
+                        Field = "qty"
+                        Message = "qty must be greater than zero"
+                    }
+                ]

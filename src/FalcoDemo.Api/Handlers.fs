@@ -79,24 +79,39 @@ let deleteProduct (store: ProductStore) : HttpHandler =
             store.Remove id |> ignore
             Response.withStatusCode 204 >> Response.ofEmpty <| ctx
 
+/// GET /products/{id}/quote/{qty} - volume-priced quote for a product.
 let quote (store: ProductStore) : HttpHandler =
     fun ctx ->
         let route = Request.getRoute ctx
-        let id = Guid.Parse(route.GetString "id")
-        let qty = int (route.GetString "qty")
 
-        match store.TryFind id with
-        | Some product ->
-            let total = Pricing.discountedTotalCents product.UnitPriceCents qty
-            let savings = (product.UnitPriceCents * qty) - total
+        match Guid.TryParse(route.GetString "id"), Int32.TryParse(route.GetString "qty") with
+        | (false, _), _ -> problem 400 "Invalid identifier" "The id segment must be a GUID." ctx
+        | _, (false, _) -> problem 400 "Invalid quantity" "The qty segment must be an integer." ctx
+        | (true, id), (true, rawQty) ->
+            match Pricing.validateQuantity rawQty with
+            | Error problems ->
+                (Response.withStatusCode 422
+                 >> Response.ofJson
+                     {|
+                         status = 422
+                         title = "Validation failed"
+                         errors = problems
+                     |})
+                    ctx
+            | Ok qty ->
+                match store.TryFind id with
+                | None -> problem 404 "Not found" $"No product with id {id}." ctx
+                | Some product ->
+                    let listTotal = Pricing.listTotalCents product.UnitPriceCents qty
+                    let total = Pricing.discountedTotalCents product.UnitPriceCents qty
 
-            Response.ofJson
-                {|
-                    sku = product.Sku
-                    quantity = qty
-                    totalCents = total
-                    savingsCents = savings
-                    savingsPercent = savings * 100 / (product.UnitPriceCents * qty)
-                |}
-                ctx
-        | None -> problem 404 "Not found" $"No product with id {id}." ctx
+                    Response.ofJson
+                        {|
+                            sku = product.Sku
+                            quantity = qty
+                            listTotalCents = listTotal
+                            totalCents = total
+                            savingsCents = listTotal - total
+                            discountPercent = Pricing.discountPercentFor qty
+                        |}
+                        ctx
