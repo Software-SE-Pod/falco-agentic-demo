@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege at the workflow level. Jobs opt in to more only where needed.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore FalcoDemo.slnx
+
+      - name: Build
+        run: dotnet build FalcoDemo.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: >-
+          dotnet test FalcoDemo.slnx
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=test-results.trx"
+          --results-directory ./TestResults
+
+      - name: Upload test results
+        # Upload even when the tests fail — that is when you actually want them.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ./TestResults
+          retention-days: 7
+
+  format:
+    name: Format check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Verify formatting
+        run: dotnet fantomas src tests --check
+
+  smoke:
+    name: Smoke test the API
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Start the API
+        run: |
+          dotnet run --project src/FalcoDemo.Api --configuration Release &
+          echo "API_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Wait for /health
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://localhost:5000/health; then
+              echo "API is up after ${attempt} attempt(s)."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::API did not become healthy within 60 seconds."
+          exit 1
+
+      - name: Exercise the product endpoints
+        run: |
+          set -euo pipefail
+          curl --silent --fail http://localhost:5000/products | tee /tmp/products.json
+          test "$(jq '.count' /tmp/products.json)" -eq 3
+
+      - name: Demonstrate a masked secret
+        # The value never appears in the log — GitHub masks registered secrets.
+        # DEMO_TOKEN is an ordinary repository secret; nothing sensitive lives here.
+        env:
+          DEMO_TOKEN: ${{ secrets.DEMO_TOKEN }}
+        run: |
+          if [ -z "${DEMO_TOKEN:-}" ]; then
+            echo "DEMO_TOKEN is not set — add it under Settings > Secrets to see masking."
+          else
+            echo "DEMO_TOKEN length is ${#DEMO_TOKEN}; the value itself prints as: $DEMO_TOKEN"
+          fi
+
+      - name: Stop the API
+        if: always()
+        run: kill "${API_PID}" || true

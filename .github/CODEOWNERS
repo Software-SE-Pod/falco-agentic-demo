@@ -1,0 +1,17 @@
+# CODEOWNERS — every PR touching these paths auto-requests the listed reviewer.
+# Patterns are matched bottom-up: the LAST matching pattern wins.
+# Demo note: a bot-authored PR gets no bypass here. It is reviewed like any other.
+
+# Default owner for everything in the repo.
+*                                 @garrettlondon1
+
+# Application code.
+/src/                             @garrettlondon1
+/tests/                           @garrettlondon1
+
+# Platform configuration is the most sensitive surface in the repo.
+/.github/workflows/               @garrettlondon1
+/.github/agents/                  @garrettlondon1
+/.github/skills/                  @garrettlondon1
+/.github/CODEOWNERS               @garrettlondon1
+/.github/copilot-instructions.md  @garrettlondon1

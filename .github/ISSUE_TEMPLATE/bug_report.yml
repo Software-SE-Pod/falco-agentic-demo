@@ -1,0 +1,53 @@
+name: Bug report
+description: Something in the API behaves incorrectly.
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing. Please fill in enough for someone to reproduce it
+        without asking you a follow-up question.
+
+  - type: input
+    id: endpoint
+    attributes:
+      label: Endpoint
+      description: Which route is affected?
+      placeholder: GET /products/{id}
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: Include the status code and the response body.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: A curl command is ideal.
+      render: bash
+      placeholder: curl -i http://localhost:5000/products/not-a-guid
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I ran `dotnet test FalcoDemo.slnx` and noted whether it passes
+          required: true
+        - label: This report contains no secrets, tokens or customer data
+          required: true

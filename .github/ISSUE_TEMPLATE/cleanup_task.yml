@@ -1,0 +1,41 @@
+name: Cleanup task
+description: A tidy-up the repo-cleanup agent could pick up.
+labels: [cleanup, automated-candidate]
+body:
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Formatting drift
+        - Dead code
+        - Commented-out code
+        - Stale or missing documentation
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: path
+    attributes:
+      label: Path
+      placeholder: src/FalcoDemo.Api/Handlers.fs
+    validations:
+      required: true
+
+  - type: textarea
+    id: detail
+    attributes:
+      label: What needs tidying
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This does not change behaviour
+          required: true
+        - label: This does not touch .github/workflows, .fsproj files or CODEOWNERS
+          required: true
