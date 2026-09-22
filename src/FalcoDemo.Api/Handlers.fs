@@ -36,6 +36,23 @@ let listProducts (store: ProductStore) : HttpHandler =
 
         Response.ofJson payload ctx
 
+/// GET /products/low-stock - products at or below a quantity threshold.
+/// Accepts an optional `threshold` query parameter (defaults to 20).
+let lowStockProducts (store: ProductStore) : HttpHandler =
+    fun ctx ->
+        let query = Request.getQuery ctx
+        let threshold = query.GetInt("threshold", 20)
+        let items = Validation.lowStock threshold (store.All())
+
+        let payload =
+            {|
+                threshold = threshold
+                count = List.length items
+                items = items
+            |}
+
+        Response.ofJson payload ctx
+
 /// GET /products/{id} - a single product, or 404.
 let getProduct (store: ProductStore) : HttpHandler =
     fun ctx ->

@@ -50,3 +50,9 @@ module Validation =
     let inventoryValueCents (products: Product list) =
         products
         |> List.sumBy (fun p -> int64 p.UnitPriceCents * int64 p.QuantityOnHand)
+
+    /// Products at or below the given quantity threshold, sorted by SKU.
+    let lowStock (threshold: int) (products: Product list) =
+        products
+        |> List.filter (fun p -> p.QuantityOnHand <= threshold)
+        |> List.sortBy (fun p -> p.Sku)

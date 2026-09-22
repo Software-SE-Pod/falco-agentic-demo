@@ -68,6 +68,37 @@ let ``inventory value multiplies price by quantity`` () =
     Assert.Equal(800L, Validation.inventoryValueCents products)
 
 [<Fact>]
+let ``low stock returns only products at or below the threshold, sorted by sku`` () =
+    let products =
+        [
+            {
+                Id = Guid.NewGuid()
+                Sku = "C"
+                Name = "C"
+                UnitPriceCents = 100
+                QuantityOnHand = 5
+            }
+            {
+                Id = Guid.NewGuid()
+                Sku = "A"
+                Name = "A"
+                UnitPriceCents = 100
+                QuantityOnHand = 20
+            }
+            {
+                Id = Guid.NewGuid()
+                Sku = "B"
+                Name = "B"
+                UnitPriceCents = 100
+                QuantityOnHand = 21
+            }
+        ]
+
+    let skus = Validation.lowStock 20 products |> List.map (fun p -> p.Sku)
+
+    Assert.Equal<string list>([ "A"; "C" ], skus)
+
+[<Fact>]
 let ``store normalises sku to upper case and trims name`` () =
     let store = ProductStore()
 

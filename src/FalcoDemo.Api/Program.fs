@@ -14,6 +14,7 @@ let main args =
         [
             get "/health" Handlers.health
             get "/products" (Handlers.listProducts store)
+            get "/products/low-stock" (Handlers.lowStockProducts store)
             get "/products/{id}" (Handlers.getProduct store)
             post "/products" (Handlers.createProduct store)
             delete "/products/{id}" (Handlers.deleteProduct store)

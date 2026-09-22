@@ -15,6 +15,7 @@ In-memory product catalogue. No database, no ORM, no DI container — on purpose
 | --- | --- | --- |
 | `GET` | `/health` | Liveness probe used by the CI smoke test. |
 | `GET` | `/products` | All products, sorted by SKU, plus total inventory value. |
+| `GET` | `/products/low-stock` | Products at or below a quantity threshold (`?threshold=`, default `20`). |
 | `GET` | `/products/{id}` | One product, or `404`. `400` if the id is not a GUID. |
 | `POST` | `/products` | Validates and creates. `422` lists **every** invalid field. |
 | `DELETE` | `/products/{id}` | Idempotent removal, `204`. |
