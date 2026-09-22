@@ -7,16 +7,17 @@ description: >-
 emoji: "🧹"
 
 on:
-  schedule:
-    - cron: "0 9 * * 1"
+  schedule: weekly on monday
   workflow_dispatch:
 
 # Read-only. The agent cannot write to the repo; the safe-output job opens the PR
 # in a separate, permission-scoped step.
+# copilot-requests: write uses the Actions token for inference rather than a PAT.
 permissions:
   contents: read
   pull-requests: read
   issues: read
+  copilot-requests: write
 
 engine:
   id: copilot
