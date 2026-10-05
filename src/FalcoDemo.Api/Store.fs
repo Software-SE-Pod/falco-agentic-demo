@@ -9,14 +9,17 @@ open FalcoDemo.Api.Domain
 type ProductStore() =
     let products = ConcurrentDictionary<Guid, Product>()
 
+    /// Returns every stored product sorted by SKU.
     member _.All() =
         products.Values |> Seq.sortBy (fun p -> p.Sku) |> List.ofSeq
 
+    /// Returns the product with the given identifier when it exists.
     member _.TryFind(id: Guid) =
         match products.TryGetValue id with
         | true, product -> Some product
         | false, _ -> None
 
+    /// Adds a product after applying the store's canonical SKU and name formatting.
     member _.Add(candidate: NewProduct) =
         let product =
             {
@@ -30,8 +33,10 @@ type ProductStore() =
         products[product.Id] <- product
         product
 
+    /// Removes the product when present and reports whether anything was deleted.
     member _.Remove(id: Guid) = products.TryRemove id |> fst
 
+    /// Seeds the store with the demo catalogue and returns the same store instance.
     member this.Seed() =
         [
             {
